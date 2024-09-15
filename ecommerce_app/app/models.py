@@ -11,6 +11,8 @@ CATEGORY_CHOICES = (
   ('CZ', 'chess'),
   ('IC', 'Ice-Creams'),
 )
+
+
 class Product(models.Model):
   title = models.CharField(max_length=100)
   selling_price = models.FloatField()
@@ -22,3 +24,4 @@ class Product(models.Model):
   product_image = models.ImageField(upload_to='product')
   def _str_(self):
     return self.title
+#tao nguoi viet Nam

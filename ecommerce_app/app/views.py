@@ -1,17 +1,19 @@
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
-from . models import Product
+from . models import Product, Customer, Cart
 from django.db.models import Count
 from . forms import CustomerRegistationForm, CustomerProfileForm
 from django.contrib import messages
-from .models import Customer
+from django.db.models import Q
+
 # Create your views here.
 def home(request):
-  return render(request, "app/home.html");
+  return render(request, "app/home.html")
 def about(request):
-  return render(request, "app/about.html");
+  return render(request, "app/about.html")
 def contact(request):
-  return render(request, "app/contact.html");
+  return render(request, "app/contact.html")
 
 
 class CategoryView(View):
@@ -90,4 +92,133 @@ class updateAddress(View):
     else:
         messages.warning(request, "Nhap data vao")
     return redirect('address')
+
+def add_to_cart(request):
+    user = request.user
+    product_id = request.GET.get('prod_id')
+    product = Product.objects.get(id=product_id)
+
+    # Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
+    cart_item, created = Cart.objects.get_or_create(user=user, product=product)
+
+    if not created:
+        # Nếu sản phẩm đã tồn tại, tăng số lượng
+        cart_item.quantity += 1
+        cart_item.save()
+    else:
+        # Nếu sản phẩm chưa tồn tại, tạo mới
+        cart_item.save()
+
+    return redirect("/cart")
+
+
+def show_cart(request):
+    user = request.user
+    cart = Cart.objects.filter(user=user)
+    amount = 0
+    for p in cart:
+        value = p.quantity * p.product.discounted_price
+        amount = amount + value
+    totalamount = amount + 40
+    return render(request, 'app/addtocart.html', locals())
+
+class checkout(View):
+    def get(self, request):
+        user = request.user
+        add = Customer.objects.filter(user=user)
+        cart_items = Cart.objects.filter(user=user)
+        famount = 0
+        for p in cart_items:
+            value = p.quantity * p.product.discounted_price
+            famount = famount + value
+        totalamount = famount + 40
+        return render(request, 'app/checkout.html', locals())
+
+
+def calculate_total(user):
+    # """
+    # Hàm tính tổng tiền trong giỏ hàng.
+    # """
+    cart = Cart.objects.filter(user=user)
+    amount = 0
+    for p in cart:
+        value = p.quantity * p.product.discounted_price
+        amount += value
+    totalamount = amount + 40  # Phí vận chuyển cố định là 40
+    return amount, totalamount
+
+
+def plus_cart(request):
+    if request.method == 'GET':
+        prod_id = request.GET.get('prod_id')
+        try:
+            # Lấy đối tượng cart với user và product
+            c = Cart.objects.get(Q(product=prod_id) & Q(user=request.user))
+            c.quantity += 1
+            c.save()
+
+            # Tính tổng tiền
+            amount, totalamount = calculate_total(request.user)
+
+            data = {
+                'quantity': c.quantity,
+                'amount': amount,
+                'totalamount': totalamount
+            }
+            return JsonResponse(data)
+        except Cart.DoesNotExist:
+            return JsonResponse({'error': 'Product not found in cart'}, status=404)
+
+
+
+def minus_cart(request):
+    if request.method == 'GET':
+        prod_id = request.GET.get('prod_id')
+        cart_items = Cart.objects.filter(Q(product=prod_id) & Q(user=request.user))
+
+        if cart_items.exists():
+            c = cart_items.first()
+            if c.quantity > 1:
+                c.quantity -= 1  # Giảm số lượng nếu lớn hơn 1
+                c.save()
+            else:
+                # Nếu số lượng là 1 thì giữ nguyên và không xóa sản phẩm
+                c.quantity = 1
+                c.save()
+
+            # Tính toán lại tổng giá trị giỏ hàng
+            amount, totalamount = calculate_total(request.user)
+
+            data = {
+                'quantity': c.quantity,  # Cập nhật số lượng về 1 nếu cố gắng giảm dưới 1
+                'amount': amount,
+                'totalamount': totalamount
+            }
+            return JsonResponse(data)
+        else:
+            return JsonResponse({'error': 'Item not found in cart'}, status=404)
+
+
+
+
+def remove_cart(request):
+    if request.method == 'GET':
+        prod_id = request.GET.get('prod_id')
+        try:
+            # Lấy đối tượng cart với user và product
+            c = Cart.objects.get(Q(product=prod_id) & Q(user=request.user))
+            c.delete()
+
+            # Tính tổng tiền
+            amount, totalamount = calculate_total(request.user)
+
+            data = {
+                'amount': amount,
+                'totalamount': totalamount
+            }
+            return JsonResponse(data)
+        except Cart.DoesNotExist:
+            return JsonResponse({'error': 'Product not found in cart'}, status=404)
+
+
 

@@ -66,3 +66,31 @@ $('.remove-cart').click(function(e){
     });
 });
 
+$('.plus-wishlist').click(function() {
+    var id = $(this).attr("pid").toString();  // Lấy ID sản phẩm từ thuộc tính "pid"
+
+    $.ajax({
+        type: "GET",
+        url: "/pluswishlist",  // URL endpoint để thêm sản phẩm vào danh sách yêu thích
+        data: {
+            prod_id: id  // Gửi ID sản phẩm tới server
+        },
+        success: function(data) {
+            // Sau khi thành công, chuyển hướng tới trang chi tiết sản phẩm
+            window.location.href = `http://127.0.0.1:8000/product-detail/${id}`;
+        }
+    });
+});
+$(".minus-wishlist").click(function() {
+    var id = $(this).attr("pid").toString();
+    $.ajax({
+        type: "GET",
+        url: "/minuswishlist",
+        data: {
+            prod_id: id
+        },
+        success: function(data) {
+            window.location.href = `http://127.0.0.1:8000/product-detail/${id}`;
+        }
+    });
+});

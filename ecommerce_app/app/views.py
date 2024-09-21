@@ -1,13 +1,14 @@
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
-from . models import Product, Customer, Cart, OrderPlaced, Wishlist
+from . models import Product, Customer, Cart, OrderPlaced, Wishlist, Payment
 from django.db.models import Count
 from . forms import CustomerRegistationForm, CustomerProfileForm
 from django.contrib import messages
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+import random
 # Create your views here.
 
 @login_required
@@ -199,12 +200,63 @@ class checkout(View):
         user = request.user
         add = Customer.objects.filter(user=user)
         cart_items = Cart.objects.filter(user=user)
-        famount = 0
-        for p in cart_items:
-            value = p.quantity * p.product.discounted_price
-            famount = famount + value
-        totalamount = famount + 40
+        famount = sum(item.quantity * item.product.discounted_price for item in cart_items)
+        totalamount = famount + 40  # Assuming a fixed shipping fee of 40
         return render(request, 'app/checkout.html', locals())
+
+    def post(self, request):
+        user = request.user
+        cust_id = request.POST.get('custid')  # Get the selected address ID from the form
+
+        if not cust_id:
+            messages.warning(request, "Please select a shipping address.")
+            return redirect('checkout')
+
+        try:
+            customer = Customer.objects.get(id=cust_id, user=user)
+        except Customer.DoesNotExist:
+            messages.warning(request, "Invalid shipping address selected.")
+            return redirect('checkout')
+
+        cart_items = Cart.objects.filter(user=user)
+        if not cart_items.exists():
+            messages.warning(request, "Your cart is empty.")
+            return redirect('checkout')
+
+        famount = sum(item.quantity * item.product.discounted_price for item in cart_items)
+        totalamount = famount + 40  # Shipping fee
+
+        # Generate a unique order_id
+        order_id = f"ORDER{random.randint(100000, 999999)}"
+
+        # Create a Payment record
+        payment = Payment.objects.create(
+            user=user,
+            amount=totalamount,
+            order_id=order_id,
+            payment_status='Success',  # In a real scenario, integrate with a payment gateway to get actual status
+            paid=True
+        )
+
+        # Create OrderPlaced records for each cart item
+        for item in cart_items:
+            OrderPlaced.objects.create(
+                user=user,
+                customer=customer,
+                product=item.product,
+                quantity=item.quantity,
+                payment=payment
+            )
+
+        # Clear the cart
+        cart_items.delete()
+
+        messages.success(request, "Your order has been placed successfully.")
+        return redirect('orders')
+
+
+
+
 
 @login_required  
 def calculate_total(user):

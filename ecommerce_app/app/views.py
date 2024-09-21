@@ -177,7 +177,7 @@ def show_cart(request):
     for p in cart:
         value = p.quantity * p.product.discounted_price
         amount = amount + value
-    totalamount = amount + 40
+    totalamount = amount + 40000
     return render(request, 'app/addtocart.html', locals())
 
 @login_required
@@ -201,7 +201,7 @@ class checkout(View):
         add = Customer.objects.filter(user=user)
         cart_items = Cart.objects.filter(user=user)
         famount = sum(item.quantity * item.product.discounted_price for item in cart_items)
-        totalamount = famount + 40  # Assuming a fixed shipping fee of 40
+        totalamount = famount + 40000 # Assuming a fixed shipping fee of 40
         return render(request, 'app/checkout.html', locals())
 
     def post(self, request):
@@ -224,7 +224,7 @@ class checkout(View):
             return redirect('checkout')
 
         famount = sum(item.quantity * item.product.discounted_price for item in cart_items)
-        totalamount = famount + 40  # Shipping fee
+        totalamount = famount + 40000  # Shipping fee
 
         # Generate a unique order_id
         order_id = f"ORDER{random.randint(100000, 999999)}"
@@ -268,7 +268,7 @@ def calculate_total(user):
     for p in cart:
         value = p.quantity * p.product.discounted_price
         amount += value
-    totalamount = amount + 40  # Phí vận chuyển cố định là 40
+    totalamount = amount + 40000  # Phí vận chuyển cố định là 40
     return amount, totalamount
 
 @login_required  
@@ -294,7 +294,7 @@ def plus_cart(request):
         for p in cart:
             value = p.quantity * p.product.discounted_price
             amount = amount + value
-        totalamount = amount + 40
+        totalamount = amount + 40000
         
         data = {
             'quantity': c.quantity,
@@ -320,7 +320,7 @@ def minus_cart(request):
         for p in cart:
             value = p.quantity * p.product.discounted_price
             amount = amount + value
-        totalamount = amount + 40
+        totalamount = amount + 40000
         
         data = {
             'quantity': c.quantity,
@@ -346,7 +346,7 @@ def remove_cart(request):
         for p in cart:
             value = p.quantity * p.product.discounted_price
             amount = amount + value
-        totalamount = amount + 40
+        totalamount = amount + 40000
         
         data = {
             'amount': amount,
